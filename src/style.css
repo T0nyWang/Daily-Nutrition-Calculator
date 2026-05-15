@@ -303,6 +303,70 @@ select {
   min-width: 760px;
 }
 
+.compact-table-shell {
+  margin-top: 16px;
+}
+
+.compact-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 9px 8px;
+  border-bottom: 1px solid rgba(31, 41, 55, 0.08);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.compact-table th {
+  color: var(--ink-subtle);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.compact-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.compact-name-cell {
+  min-width: 168px;
+  white-space: normal;
+}
+
+.compact-name-cell strong {
+  display: block;
+  line-height: 1.25;
+}
+
+.compact-meta {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--ink-subtle);
+  font-size: 0.74rem;
+}
+
+.compact-actions-cell {
+  width: 1%;
+}
+
+.compact-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compact-action-group .el-button + .el-button {
+  margin-left: 0;
+}
+
 .entry-card-list,
 .summary-card-list,
 .custom-food-card-list {
@@ -314,7 +378,7 @@ select {
 .entry-card-item,
 .summary-card-item,
 .custom-food-card-item {
-  padding: 16px;
+  padding: 14px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(31, 41, 55, 0.08);
@@ -333,26 +397,55 @@ select {
 .summary-card-head strong {
   display: block;
   font-size: 1rem;
+  line-height: 1.2;
 }
 
 .entry-card-head p,
 .summary-card-item p {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--ink-subtle);
 }
 
-.entry-card-macros {
+.entry-list-macros {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 12px;
-  margin-top: 12px;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry-list-macro-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(31, 41, 55, 0.05);
+}
+
+.entry-list-macro-item span {
   color: var(--ink-subtle);
+  font-size: 0.88rem;
+}
+
+.entry-list-macro-item strong {
   font-size: 0.95rem;
+  line-height: 1.2;
 }
 
 .entry-card-actions {
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
   margin-top: 10px;
+}
+
+.entry-card-actions .el-button {
+  width: 100%;
+  margin: 0;
+  min-height: 34px;
 }
 
 .summary-topline {
@@ -366,22 +459,59 @@ select {
 }
 
 .dialog-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
   align-items: flex-start;
+  gap: 16px;
 }
 
 .dialog-main {
-  flex: 1.4;
   min-width: 0;
 }
 
 .dialog-sidebar {
-  flex: 0.9;
-  min-width: 280px;
+  min-width: 0;
+  width: 100%;
+}
+
+.dialog-panel,
+.selection-card,
+.custom-food-preview {
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+}
+
+.dialog-panel {
+  padding: 18px;
+}
+
+.dialog-section + .dialog-section {
+  margin-top: 14px;
+}
+
+.dialog-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dialog-section-head strong {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.dialog-section-head span {
+  color: var(--ink-subtle);
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .food-results {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   max-height: 460px;
   overflow: auto;
   padding-right: 4px;
@@ -389,14 +519,14 @@ select {
 
 .food-option {
   width: 100%;
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 12px 14px;
+  border-radius: 16px;
   border: 1px solid rgba(31, 41, 55, 0.08);
   background: rgba(255, 255, 255, 0.84);
   text-align: left;
   cursor: pointer;
   transition:
-    transform 0.18s ease,
+    background-color 0.18s ease,
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 }
@@ -416,13 +546,23 @@ select {
 
 .food-option:hover,
 .food-option.is-selected {
-  transform: translateY(-1px);
+  background: rgba(247, 252, 251, 0.96);
   border-color: rgba(15, 118, 110, 0.4);
-  box-shadow: 0 12px 26px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.08);
 }
 
 .selection-card {
   padding: 18px;
+}
+
+.selection-hero h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.selection-hero .selection-meta {
+  margin-top: 8px;
 }
 
 .per100-grid {
@@ -436,6 +576,159 @@ select {
   margin-top: 16px;
 }
 
+.app-dialog .el-dialog {
+  max-width: calc(100vw - 16px);
+}
+
+.app-dialog .el-dialog__body {
+  padding-top: 10px;
+}
+
+.app-dialog .el-dialog__footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.app-dialog .el-dialog__footer .el-button {
+  min-width: 112px;
+  margin: 0;
+}
+
+.custom-food-dialog .stack-form,
+.entry-dialog .dialog-form {
+  margin-top: 8px;
+}
+
+.custom-food-dialog .el-form-item,
+.entry-dialog .el-form-item {
+  margin-bottom: 14px;
+}
+
+.custom-food-dialog .form-grid,
+.entry-dialog .form-grid {
+  gap: 10px 14px;
+}
+
+.custom-food-dialog .el-dialog__body,
+.entry-dialog .el-dialog__body {
+  padding-bottom: 8px;
+}
+
+.custom-food-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.7fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.custom-food-main,
+.custom-food-side {
+  min-width: 0;
+}
+
+.custom-food-dialog .custom-food-preview {
+  display: grid;
+  gap: 12px;
+  margin-top: 0;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.custom-food-dialog .el-textarea__inner {
+  min-height: 72px !important;
+}
+
+.preview-metric,
+.preview-note {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+}
+
+.preview-metric span,
+.preview-note span {
+  display: block;
+  color: var(--ink-subtle);
+  font-size: 0.84rem;
+}
+
+.preview-metric strong,
+.preview-note strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.danger-message-box {
+  width: min(460px, calc(100vw - 24px));
+  border-radius: 20px;
+  padding: 4px;
+}
+
+.danger-message-box .el-message-box__header {
+  padding: 18px 20px 8px;
+}
+
+.danger-message-box .el-message-box__title {
+  color: #111827;
+  font-weight: 800;
+}
+
+.danger-message-box .el-message-box__content {
+  padding: 4px 20px 6px;
+}
+
+.danger-message-box .el-message-box__container {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.danger-message-box .el-message-box__status {
+  color: #dc2626 !important;
+  font-size: 1.2rem !important;
+  margin-top: 2px;
+}
+
+.danger-message-box .el-message-box__message {
+  color: #374151;
+  line-height: 1.6;
+}
+
+.danger-message-box .el-message-box__btns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px 18px;
+}
+
+.danger-message-box .el-message-box__btns .el-button {
+  min-width: 112px;
+  margin: 0;
+  border-radius: 12px;
+}
+
+.danger-confirm-button {
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+.danger-confirm-button:hover,
+.danger-confirm-button:focus {
+  border-color: #b91c1c !important;
+  background: #b91c1c !important;
+}
+
+.danger-cancel-button {
+  border-color: rgba(31, 41, 55, 0.12) !important;
+  color: #374151 !important;
+  background: #fff !important;
+}
+
 .custom-food-preview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -446,6 +739,12 @@ select {
 
 .table-actions {
   align-items: center;
+  justify-content: flex-end;
+}
+
+.table-actions .el-button {
+  min-width: 64px;
+  margin: 0;
 }
 
 .empty-hint {
@@ -463,7 +762,16 @@ select {
   }
 
   .dialog-layout {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-sidebar,
+  .selection-card {
+    width: 100%;
+  }
+
+  .custom-food-layout {
+    grid-template-columns: 1fr;
   }
 
   .form-grid-5,
@@ -578,18 +886,141 @@ select {
     min-width: 680px;
   }
 
-  .entry-card-macros {
-    grid-template-columns: 1fr;
+  .compact-table {
+    min-width: 560px;
+    font-size: 0.82rem;
+  }
+
+  .compact-table th,
+  .compact-table td {
+    padding: 8px 7px;
+  }
+
+  .compact-name-cell {
+    min-width: 148px;
+  }
+
+  .app-dialog .el-dialog {
+    width: calc(100vw - 12px) !important;
+    margin: 0 auto;
+  }
+
+  .app-dialog .el-dialog__header,
+  .app-dialog .el-dialog__body,
+  .app-dialog .el-dialog__footer {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .app-dialog .el-dialog__footer {
+    gap: 10px;
+  }
+
+  .app-dialog .el-dialog__footer .el-button {
+    min-width: 104px;
+  }
+
+  .dialog-layout {
+    gap: 12px;
+  }
+
+  .dialog-panel,
+  .selection-card,
+  .custom-food-dialog .custom-food-preview {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .dialog-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .food-results {
+    max-height: 280px;
+    padding-right: 0;
+  }
+
+  .food-option {
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+
+  .selection-card {
+    padding: 14px;
+  }
+
+  .custom-food-dialog .el-form-item,
+  .entry-dialog .el-form-item {
+    margin-bottom: 12px;
+  }
+
+  .custom-food-dialog .custom-food-preview {
+    padding: 10px 12px;
+  }
+
+  .danger-message-box {
+    width: calc(100vw - 20px);
+  }
+
+  .danger-message-box .el-message-box__header,
+  .danger-message-box .el-message-box__content,
+  .danger-message-box .el-message-box__btns {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .danger-message-box .el-message-box__btns {
+    flex-wrap: wrap;
+  }
+
+  .danger-message-box .el-message-box__btns .el-button {
+    flex: 1 1 140px;
   }
 
   .entry-card-head,
-  .summary-card-head,
-  .entry-card-actions {
+  .summary-card-head {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .entry-card-item,
+  .custom-food-card-item {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .entry-card-head {
+    gap: 8px;
+  }
+
+  .entry-card-head strong {
+    font-size: 0.98rem;
+  }
+
+  .entry-list-macros {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .entry-list-macro-item {
+    padding: 7px 10px;
+    border-radius: 10px;
+  }
+
+  .entry-list-macro-item span,
+  .entry-list-macro-item strong {
+    font-size: 0.9rem;
+  }
+
   .entry-card-actions {
-    margin-top: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .entry-card-actions .el-button {
+    min-height: 32px;
   }
 }

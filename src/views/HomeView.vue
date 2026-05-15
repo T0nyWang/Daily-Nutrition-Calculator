@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, EditPen } from '@element-plus/icons-vue'
 
 import {
   ACTIVITY_LEVEL_OPTIONS,
@@ -186,8 +187,14 @@ function submitEntryDialog() {
 }
 
 async function removeEntry(entry: MealEntry) {
-  await ElMessageBox.confirm(`確定要刪除「${entry.foodNameSnapshot}」嗎？`, '刪除餐點', {
+  await ElMessageBox.confirm(`這筆餐點資料會從「${entry.meal === 'breakfast' ? '早餐' : entry.meal === 'lunch' ? '午餐' : entry.meal === 'dinner' ? '晚餐' : entry.meal === 'snack' ? '點心' : '宵夜'}」移除，確定要刪除「${entry.foodNameSnapshot}」嗎？`, '刪除餐點項目', {
     type: 'warning',
+    confirmButtonText: '確認刪除',
+    cancelButtonText: '保留資料',
+    confirmButtonClass: 'danger-confirm-button',
+    cancelButtonClass: 'danger-cancel-button',
+    customClass: 'danger-message-box',
+    distinguishCancelAndClose: true,
   })
 
   nutritionStore.deleteMealEntry(entry.meal, entry.id)
@@ -256,8 +263,14 @@ function submitCustomFoodDialog() {
 }
 
 async function removeCustomFood(food: FoodReference) {
-  await ElMessageBox.confirm(`確定要刪除自訂食物「${food.name}」嗎？`, '刪除自訂食物', {
+  await ElMessageBox.confirm(`自訂食物「${food.name}」刪除後，之後新增餐點時將無法再直接選取。確定要刪除嗎？`, '刪除自訂食物', {
     type: 'warning',
+    confirmButtonText: '確認刪除',
+    cancelButtonText: '先保留',
+    confirmButtonClass: 'danger-confirm-button',
+    cancelButtonClass: 'danger-cancel-button',
+    customClass: 'danger-message-box',
+    distinguishCancelAndClose: true,
   })
 
   nutritionStore.deleteCustomFood(food.id)
@@ -464,32 +477,59 @@ async function removeCustomFood(food: FoodReference) {
             </div>
           </div>
 
-          <div v-if="isCompact" class="entry-card-list">
-            <article v-for="entry in entriesByMeal[meal.key]" :key="entry.id" class="entry-card-item">
-              <div class="entry-card-head">
-                <div>
-                  <strong>{{ entry.foodNameSnapshot }}</strong>
-                  <p>{{ formatNumber(entry.grams, 0) }} g · {{ formatNumber(entry.nutrition.calories, 0) }} kcal</p>
-                </div>
+          <div v-if="isCompact" class="table-shell compact-table-shell">
+            <table v-if="entriesByMeal[meal.key].length > 0" class="compact-table">
+              <thead>
+                <tr>
+                  <th>品項</th>
+                  <th>克</th>
+                  <th>kcal</th>
+                  <th>P</th>
+                  <th>C</th>
+                  <th>F</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="entry in entriesByMeal[meal.key]" :key="entry.id">
+                  <td class="compact-name-cell">
+                    <strong>{{ entry.foodNameSnapshot }}</strong>
+                    <span class="compact-meta">
+                      {{ entry.source === 'database' ? '資料庫' : '自訂' }}
+                    </span>
+                  </td>
+                  <td>{{ formatNumber(entry.grams, 0) }}</td>
+                  <td>{{ formatNumber(entry.nutrition.calories, 0) }}</td>
+                  <td>{{ formatNumber(entry.nutrition.protein) }}</td>
+                  <td>{{ formatNumber(entry.nutrition.carb) }}</td>
+                  <td>{{ formatNumber(entry.nutrition.fat) }}</td>
+                  <td class="compact-actions-cell">
+                    <div class="compact-action-group">
+                      <el-button
+                        :icon="EditPen"
+                        circle
+                        size="small"
+                        type="primary"
+                        plain
+                        title="編輯"
+                        @click="editEntry(entry)"
+                      />
+                      <el-button
+                        :icon="Delete"
+                        circle
+                        size="small"
+                        type="danger"
+                        plain
+                        title="刪除"
+                        @click="removeEntry(entry)"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-                <el-tag size="small" :type="entry.source === 'database' ? 'success' : 'warning'">
-                  {{ entry.source === 'database' ? '資料庫' : '自訂' }}
-                </el-tag>
-              </div>
-
-              <div class="entry-card-macros">
-                <span>蛋白質 {{ formatNumber(entry.nutrition.protein) }} g</span>
-                <span>碳水 {{ formatNumber(entry.nutrition.carb) }} g</span>
-                <span>脂肪 {{ formatNumber(entry.nutrition.fat) }} g</span>
-              </div>
-
-              <div class="entry-card-actions">
-                <el-button text type="primary" @click="editEntry(entry)">編輯</el-button>
-                <el-button text type="danger" @click="removeEntry(entry)">刪除</el-button>
-              </div>
-            </article>
-
-            <div v-if="entriesByMeal[meal.key].length === 0" class="empty-hint">尚未新增餐點</div>
+            <div v-else class="empty-hint">尚未新增餐點</div>
           </div>
 
           <div v-else class="table-shell">
@@ -513,8 +553,8 @@ async function removeCustomFood(food: FoodReference) {
               <el-table-column label="操作" width="160" :fixed="isCompact ? false : 'right'">
                 <template #default="{ row }">
                   <div class="table-actions">
-                    <el-button text type="primary" @click="editEntry(row)">編輯</el-button>
-                    <el-button text type="danger" @click="removeEntry(row)">刪除</el-button>
+                    <el-button type="primary" plain size="small" @click="editEntry(row)">編輯</el-button>
+                    <el-button type="danger" plain size="small" @click="removeEntry(row)">刪除</el-button>
                   </div>
                 </template>
               </el-table-column>
@@ -615,29 +655,55 @@ async function removeCustomFood(food: FoodReference) {
           class="section-alert"
         />
 
-        <div v-if="isCompact" class="custom-food-card-list">
-          <article v-for="food in customFoods" :key="food.id" class="custom-food-card-item">
-            <div class="entry-card-head">
-              <div>
-                <strong>{{ food.name }}</strong>
-                <p>{{ food.category || '未分類' }}</p>
-              </div>
-            </div>
+        <div v-if="isCompact" class="table-shell compact-table-shell">
+          <table v-if="customFoods.length > 0" class="compact-table">
+            <thead>
+              <tr>
+                <th>名稱</th>
+                <th>kcal</th>
+                <th>P</th>
+                <th>C</th>
+                <th>F</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="food in customFoods" :key="food.id">
+                <td class="compact-name-cell">
+                  <strong>{{ food.name }}</strong>
+                  <span class="compact-meta">{{ food.category || '未分類' }}</span>
+                </td>
+                <td>{{ formatNumber(food.per100g.calories, 0) }}</td>
+                <td>{{ formatNumber(food.per100g.protein) }}</td>
+                <td>{{ formatNumber(food.per100g.carb) }}</td>
+                <td>{{ formatNumber(food.per100g.fat) }}</td>
+                <td class="compact-actions-cell">
+                  <div class="compact-action-group">
+                    <el-button
+                      :icon="EditPen"
+                      circle
+                      size="small"
+                      type="primary"
+                      plain
+                      title="編輯"
+                      @click="openCustomFoodDialog(food)"
+                    />
+                    <el-button
+                      :icon="Delete"
+                      circle
+                      size="small"
+                      type="danger"
+                      plain
+                      title="刪除"
+                      @click="removeCustomFood(food)"
+                    />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
-            <div class="entry-card-macros">
-              <span>熱量 {{ formatNumber(food.per100g.calories, 0) }} kcal</span>
-              <span>蛋白質 {{ formatNumber(food.per100g.protein) }} g</span>
-              <span>碳水 {{ formatNumber(food.per100g.carb) }} g</span>
-              <span>脂肪 {{ formatNumber(food.per100g.fat) }} g</span>
-            </div>
-
-            <div class="entry-card-actions">
-              <el-button text type="primary" @click="openCustomFoodDialog(food)">編輯</el-button>
-              <el-button text type="danger" @click="removeCustomFood(food)">刪除</el-button>
-            </div>
-          </article>
-
-          <div v-if="customFoods.length === 0" class="empty-hint">尚未建立自訂食物</div>
+          <div v-else class="empty-hint">尚未建立自訂食物</div>
         </div>
 
         <div v-else class="table-shell">
@@ -659,8 +725,8 @@ async function removeCustomFood(food: FoodReference) {
             <el-table-column label="操作" width="160" :fixed="isCompact ? false : 'right'">
               <template #default="{ row }">
                 <div class="table-actions">
-                  <el-button text type="primary" @click="openCustomFoodDialog(row)">編輯</el-button>
-                  <el-button text type="danger" @click="removeCustomFood(row)">刪除</el-button>
+                  <el-button type="primary" plain size="small" @click="openCustomFoodDialog(row)">編輯</el-button>
+                  <el-button type="danger" plain size="small" @click="removeCustomFood(row)">刪除</el-button>
                 </div>
               </template>
             </el-table-column>
@@ -673,10 +739,11 @@ async function removeCustomFood(food: FoodReference) {
       v-model="entryDialog.visible"
       :title="entryDialog.mode === 'edit' ? '編輯餐點項目' : `新增${MEAL_DEFINITIONS.find((item) => item.key === entryDialog.meal)?.label ?? ''}餐點`"
       width="min(960px, 92vw)"
+      class="app-dialog entry-dialog"
       destroy-on-close
     >
       <div class="dialog-layout">
-        <div class="dialog-main">
+        <div class="dialog-main dialog-panel">
           <el-form label-position="top">
             <el-form-item label="資料來源">
               <el-radio-group v-model="entryDialog.source">
@@ -693,22 +760,29 @@ async function removeCustomFood(food: FoodReference) {
               />
             </el-form-item>
 
-            <div class="food-results">
-              <button
-                v-for="food in filteredEntryFoods"
-                :key="food.id"
-                type="button"
-                class="food-option"
-                :class="{ 'is-selected': food.id === entryDialog.selectedFoodId }"
-                @click="entryDialog.selectedFoodId = food.id"
-              >
-                <strong>{{ food.name }}</strong>
-                <span>{{ food.category || '未分類' }}</span>
-                <small>{{ food.alias || food.description || '—' }}</small>
-              </button>
+            <div class="dialog-section">
+              <div class="dialog-section-head">
+                <strong>搜尋結果</strong>
+                <span>{{ filteredEntryFoods.length }} 筆</span>
+              </div>
 
-              <div v-if="filteredEntryFoods.length === 0" class="empty-hint">
-                {{ entryDialog.source === 'custom' ? '目前沒有符合條件的自訂食物' : '找不到符合條件的食品資料' }}
+              <div class="food-results">
+                <button
+                  v-for="food in filteredEntryFoods"
+                  :key="food.id"
+                  type="button"
+                  class="food-option"
+                  :class="{ 'is-selected': food.id === entryDialog.selectedFoodId }"
+                  @click="entryDialog.selectedFoodId = food.id"
+                >
+                  <strong>{{ food.name }}</strong>
+                  <span>{{ food.category || '未分類' }}</span>
+                  <small>{{ food.alias || food.description || '—' }}</small>
+                </button>
+
+                <div v-if="filteredEntryFoods.length === 0" class="empty-hint">
+                  {{ entryDialog.source === 'custom' ? '目前沒有符合條件的自訂食物' : '找不到符合條件的食品資料' }}
+                </div>
               </div>
             </div>
           </el-form>
@@ -716,9 +790,15 @@ async function removeCustomFood(food: FoodReference) {
 
         <aside class="dialog-sidebar">
           <div class="selection-card">
-            <p class="panel-kicker">Selected Food</p>
-            <h3>{{ selectedEntryFood?.name ?? '尚未選擇食品' }}</h3>
-            <p class="selection-meta">{{ selectedEntryFood?.category || '請從左側列表選一個項目' }}</p>
+            <div class="dialog-section-head">
+              <strong>已選食品</strong>
+              <span>{{ selectedEntryFood ? '可加入餐點' : '尚未選取' }}</span>
+            </div>
+
+            <div class="selection-hero">
+              <h3>{{ selectedEntryFood?.name ?? '尚未選擇食品' }}</h3>
+              <p class="selection-meta">{{ selectedEntryFood?.category || '請從左側列表選一個項目' }}</p>
+            </div>
 
             <template v-if="selectedEntryFood">
               <div class="per100-grid">
@@ -751,10 +831,10 @@ async function removeCustomFood(food: FoodReference) {
       </div>
 
       <template #footer>
-        <el-button @click="entryDialog.visible = false">取消</el-button>
         <el-button type="primary" @click="submitEntryDialog">
           {{ entryDialog.mode === 'edit' ? '儲存變更' : '新增餐點' }}
         </el-button>
+        <el-button @click="entryDialog.visible = false">取消</el-button>
       </template>
     </el-dialog>
 
@@ -762,71 +842,98 @@ async function removeCustomFood(food: FoodReference) {
       v-model="customFoodDialog.visible"
       :title="customFoodDialog.mode === 'edit' ? '編輯自訂食物' : '新增自訂食物'"
       width="min(720px, 92vw)"
+      class="app-dialog custom-food-dialog"
       destroy-on-close
     >
-      <el-form label-position="top" class="stack-form">
-        <div class="form-grid form-grid-2">
-          <el-form-item label="名稱">
-            <el-input v-model="customFoodDialog.name" placeholder="例如：自製雞胸沙拉" />
-          </el-form-item>
+      <div class="custom-food-layout">
+        <div class="custom-food-main dialog-panel">
+          <el-form label-position="top" class="stack-form">
+            <div class="dialog-section">
+              <div class="dialog-section-head">
+                <strong>基本資訊</strong>
+                <span>名稱、分類與描述</span>
+              </div>
 
-          <el-form-item label="分類">
-            <el-input v-model="customFoodDialog.category" placeholder="例如：自製料理" />
-          </el-form-item>
+              <div class="form-grid form-grid-2">
+                <el-form-item label="名稱">
+                  <el-input v-model="customFoodDialog.name" placeholder="例如：自製雞胸沙拉" />
+                </el-form-item>
 
-          <el-form-item label="俗名 / 別名">
-            <el-input v-model="customFoodDialog.alias" placeholder="可不填" />
-          </el-form-item>
+                <el-form-item label="分類">
+                  <el-input v-model="customFoodDialog.category" placeholder="例如：自製料理" />
+                </el-form-item>
 
-          <el-form-item label="參考重量 (g)">
-            <el-input-number v-model="customFoodDialog.referenceGrams" :min="1" :step="10" controls-position="right" />
-          </el-form-item>
+                <el-form-item label="俗名 / 別名">
+                  <el-input v-model="customFoodDialog.alias" placeholder="可不填" />
+                </el-form-item>
+
+                <el-form-item label="參考重量 (g)">
+                  <el-input-number v-model="customFoodDialog.referenceGrams" :min="1" :step="10" controls-position="right" />
+                </el-form-item>
+              </div>
+
+              <el-form-item label="描述">
+                <el-input
+                  v-model="customFoodDialog.description"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="例如：一份含生菜、雞胸與油醋醬"
+                />
+              </el-form-item>
+            </div>
+
+            <div class="dialog-section">
+              <div class="dialog-section-head">
+                <strong>營養數值</strong>
+                <span>輸入參考重量對應的營養素</span>
+              </div>
+
+              <div class="form-grid form-grid-4">
+                <el-form-item label="蛋白質 (g)">
+                  <el-input-number v-model="customFoodDialog.protein" :min="0" :step="0.5" controls-position="right" />
+                </el-form-item>
+
+                <el-form-item label="碳水 (g)">
+                  <el-input-number v-model="customFoodDialog.carb" :min="0" :step="0.5" controls-position="right" />
+                </el-form-item>
+
+                <el-form-item label="脂肪 (g)">
+                  <el-input-number v-model="customFoodDialog.fat" :min="0" :step="0.5" controls-position="right" />
+                </el-form-item>
+
+                <el-form-item label="熱量 (kcal，可留空)">
+                  <el-input-number v-model="customFoodDialog.calories" :min="0" :step="1" controls-position="right" />
+                </el-form-item>
+              </div>
+            </div>
+          </el-form>
         </div>
 
-        <el-form-item label="描述">
-          <el-input
-            v-model="customFoodDialog.description"
-            type="textarea"
-            :rows="2"
-            placeholder="例如：一份含生菜、雞胸與油醋醬"
-          />
-        </el-form-item>
+        <aside class="custom-food-side">
+          <div class="custom-food-preview">
+            <div class="dialog-section-head">
+              <strong>儲存預覽</strong>
+              <span>送出前確認</span>
+            </div>
 
-        <div class="form-grid form-grid-4">
-          <el-form-item label="蛋白質 (g)">
-            <el-input-number v-model="customFoodDialog.protein" :min="0" :step="0.5" controls-position="right" />
-          </el-form-item>
+            <div class="preview-metric">
+              <span>參考重量熱量</span>
+              <strong>{{ formatNumber(customFoodCaloriesPreview, 0) }} kcal</strong>
+            </div>
 
-          <el-form-item label="碳水 (g)">
-            <el-input-number v-model="customFoodDialog.carb" :min="0" :step="0.5" controls-position="right" />
-          </el-form-item>
-
-          <el-form-item label="脂肪 (g)">
-            <el-input-number v-model="customFoodDialog.fat" :min="0" :step="0.5" controls-position="right" />
-          </el-form-item>
-
-          <el-form-item label="熱量 (kcal，可留空)">
-            <el-input-number v-model="customFoodDialog.calories" :min="0" :step="1" controls-position="right" />
-          </el-form-item>
-        </div>
-      </el-form>
-
-      <div class="custom-food-preview">
-        <div>
-          <span>參考重量熱量</span>
-          <strong>{{ formatNumber(customFoodCaloriesPreview, 0) }} kcal</strong>
-        </div>
-        <div>
-          <span>正規化後</span>
-          <strong>將保存為每 100g 營養值</strong>
-        </div>
+            <div class="preview-note">
+              <span>正規化後</span>
+              <strong>將保存為每 100g 營養值</strong>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <template #footer>
-        <el-button @click="customFoodDialog.visible = false">取消</el-button>
         <el-button type="primary" @click="submitCustomFoodDialog">
           {{ customFoodDialog.mode === 'edit' ? '儲存變更' : '建立自訂食物' }}
         </el-button>
+        <el-button @click="customFoodDialog.visible = false">取消</el-button>
       </template>
     </el-dialog>
   </main>
