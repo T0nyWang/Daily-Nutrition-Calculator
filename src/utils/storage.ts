@@ -21,5 +21,9 @@ export function saveToStorage<T>(key: string, value: T) {
     return
   }
 
-  window.localStorage.setItem(key, JSON.stringify(value))
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // localStorage can throw in private browsing, quota limits, or restricted environments.
+  }
 }

@@ -453,6 +453,7 @@ function confirmDeleteDialog() {
             type="date"
             value-format="YYYY-MM-DD"
             format="YYYY/MM/DD"
+            :clearable="false"
             class="date-picker"
           />
           <el-button @click="nutritionStore.goToToday()">今天</el-button>

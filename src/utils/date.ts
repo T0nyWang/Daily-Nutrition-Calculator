@@ -12,6 +12,11 @@ export function todayDateKey() {
 
 export function shiftDateKey(dateKey: string, days: number) {
   const date = new Date(`${dateKey}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) {
+    return todayDateKey()
+  }
+
   date.setDate(date.getDate() + days)
 
   return formatDateKey(date)
