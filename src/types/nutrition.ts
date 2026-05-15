@@ -3,6 +3,7 @@ export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'ver
 export type CalorieMode = 'tdee' | 'custom'
 export type FoodSource = 'database' | 'custom'
 export type MealKey = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'lateNight'
+export type MeasurementUnit = 'g' | 'ml'
 
 export interface UserProfile {
   sex: Sex
@@ -35,7 +36,9 @@ export interface FoodReference {
   alias?: string
   description?: string
   referenceGrams?: number
+  referenceUnit?: MeasurementUnit
   per100g: NutritionValues
+  per100Unit?: MeasurementUnit
   searchText?: string
 }
 
@@ -45,6 +48,7 @@ export interface MealEntry {
   foodId: string
   foodNameSnapshot: string
   grams: number
+  unit?: MeasurementUnit
   nutrition: NutritionValues
   source: FoodSource
 }
@@ -76,6 +80,7 @@ export interface CustomFoodInput {
   alias?: string
   description?: string
   referenceGrams: number
+  referenceUnit: MeasurementUnit
   protein: number
   carb: number
   fat: number

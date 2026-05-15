@@ -1,20 +1,27 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, reactive } from 'vue'
 import { storeToRefs } from 'pinia'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, EditPen } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 import {
   ACTIVITY_LEVEL_OPTIONS,
   MEAL_DEFINITIONS,
   SEX_OPTIONS,
 } from '../constants/nutrition'
-import type { FoodReference, FoodSource, MealEntry, MealKey } from '../types/nutrition'
+import type { FoodReference, FoodSource, MealEntry, MealKey, MeasurementUnit } from '../types/nutrition'
 import { useNutritionStore } from '../stores'
-import { calculateCaloriesFromMacros, formatNumber, normalizeFoodSearch } from '../utils/nutrition'
+import {
+  calculateCaloriesFromMacros,
+  calculateNutritionFromFood,
+  formatNumber,
+  getEntryMeasurementUnit,
+  getFoodMeasurementUnit,
+  normalizeFoodSearch,
+} from '../utils/nutrition'
 
 type EntryDialogMode = 'create' | 'edit'
 type CustomFoodDialogMode = 'create' | 'edit'
+type DeleteDialogType = 'entry' | 'custom-food'
 
 const nutritionStore = useNutritionStore()
 const {
@@ -34,9 +41,11 @@ const {
   effectiveCalorieTarget,
 } = storeToRefs(nutritionStore)
 
-const COMPACT_BREAKPOINT = 720
-const isCompact = ref(false)
-let compactMediaQuery: MediaQueryList | null = null
+const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
+const MEASUREMENT_UNIT_OPTIONS: Array<{ label: string; value: MeasurementUnit }> = [
+  { label: '克 (g)', value: 'g' },
+  { label: '毫升 (ml)', value: 'ml' },
+]
 
 const entryDialog = reactive({
   visible: false,
@@ -58,10 +67,18 @@ const customFoodDialog = reactive({
   alias: '',
   description: '',
   referenceGrams: 100,
+  referenceUnit: 'g' as MeasurementUnit,
   protein: 0,
   carb: 0,
   fat: 0,
   calories: null as number | null,
+})
+
+const deleteDialog = reactive({
+  visible: false,
+  type: 'entry' as DeleteDialogType,
+  entry: null as MealEntry | null,
+  food: null as FoodReference | null,
 })
 
 const dateLabel = computed(() => {
@@ -110,6 +127,18 @@ const selectedEntryFood = computed(() => {
   return entrySourceFoods.value.find((food) => food.id === entryDialog.selectedFoodId) ?? null
 })
 
+const selectedEntryUnit = computed(() => {
+  return selectedEntryFood.value ? getFoodMeasurementUnit(selectedEntryFood.value) : 'g'
+})
+
+const entryNutritionPreview = computed(() => {
+  if (!selectedEntryFood.value || !entryDialog.grams || entryDialog.grams <= 0) {
+    return null
+  }
+
+  return calculateNutritionFromFood(selectedEntryFood.value, entryDialog.grams)
+})
+
 const customFoodCaloriesPreview = computed(() => {
   if (customFoodDialog.calories !== null) {
     return customFoodDialog.calories
@@ -122,23 +151,34 @@ const customFoodCaloriesPreview = computed(() => {
   })
 })
 
-onMounted(() => {
-  if (typeof window !== 'undefined') {
-    compactMediaQuery = window.matchMedia(`(max-width: ${COMPACT_BREAKPOINT}px)`)
-    syncViewportState(compactMediaQuery)
-    compactMediaQuery.addEventListener('change', syncViewportState)
+const deleteDialogTitle = computed(() => {
+  return deleteDialog.type === 'entry' ? '刪除餐點項目' : '刪除自訂食物'
+})
+
+const deleteDialogSubject = computed(() => {
+  return deleteDialog.type === 'entry' ? deleteDialog.entry?.foodNameSnapshot ?? '' : deleteDialog.food?.name ?? ''
+})
+
+const deleteDialogDescription = computed(() => {
+  if (deleteDialog.type === 'entry' && deleteDialog.entry) {
+    const mealLabel =
+      deleteDialog.entry.meal === 'breakfast'
+        ? '早餐'
+        : deleteDialog.entry.meal === 'lunch'
+          ? '午餐'
+          : deleteDialog.entry.meal === 'dinner'
+            ? '晚餐'
+            : deleteDialog.entry.meal === 'snack'
+              ? '點心'
+              : '宵夜'
+
+    return `這筆資料會從「${mealLabel}」移除，刪除後將不會保留在當日紀錄中。`
   }
 
-  nutritionStore.loadDatabase()
+  return '刪除後，之後新增餐點時將無法再直接選取這個自訂食物。'
 })
 
-onBeforeUnmount(() => {
-  compactMediaQuery?.removeEventListener('change', syncViewportState)
-})
-
-function syncViewportState(event?: MediaQueryList | MediaQueryListEvent) {
-  isCompact.value = event ? event.matches : false
-}
+nutritionStore.loadDatabase()
 
 function openEntryDialog(meal: MealKey, source: FoodSource) {
   entryDialog.visible = true
@@ -149,6 +189,10 @@ function openEntryDialog(meal: MealKey, source: FoodSource) {
   entryDialog.selectedFoodId = ''
   entryDialog.grams = 100
   entryDialog.editingEntryId = ''
+}
+
+function selectEntryFood(food: FoodReference) {
+  entryDialog.selectedFoodId = food.id
 }
 
 function editEntry(entry: MealEntry) {
@@ -171,7 +215,7 @@ function submitEntryDialog() {
   }
 
   if (!entryDialog.grams || entryDialog.grams <= 0) {
-    ElMessage.warning('請輸入有效的食用克數')
+    ElMessage.warning(`請輸入有效的食用${selectedEntryUnit.value === 'ml' ? '毫升' : '克數'}`)
     return
   }
 
@@ -186,19 +230,11 @@ function submitEntryDialog() {
   entryDialog.visible = false
 }
 
-async function removeEntry(entry: MealEntry) {
-  await ElMessageBox.confirm(`這筆餐點資料會從「${entry.meal === 'breakfast' ? '早餐' : entry.meal === 'lunch' ? '午餐' : entry.meal === 'dinner' ? '晚餐' : entry.meal === 'snack' ? '點心' : '宵夜'}」移除，確定要刪除「${entry.foodNameSnapshot}」嗎？`, '刪除餐點項目', {
-    type: 'warning',
-    confirmButtonText: '確認刪除',
-    cancelButtonText: '保留資料',
-    confirmButtonClass: 'danger-confirm-button',
-    cancelButtonClass: 'danger-cancel-button',
-    customClass: 'danger-message-box',
-    distinguishCancelAndClose: true,
-  })
-
-  nutritionStore.deleteMealEntry(entry.meal, entry.id)
-  ElMessage.success('已刪除餐點項目')
+function removeEntry(entry: MealEntry) {
+  deleteDialog.visible = true
+  deleteDialog.type = 'entry'
+  deleteDialog.entry = entry
+  deleteDialog.food = null
 }
 
 function openCustomFoodDialog(food?: FoodReference) {
@@ -206,6 +242,7 @@ function openCustomFoodDialog(food?: FoodReference) {
 
   if (food) {
     const referenceGrams = food.referenceGrams ?? 100
+    const referenceUnit = food.referenceUnit ?? food.per100Unit ?? 'g'
 
     customFoodDialog.mode = 'edit'
     customFoodDialog.id = food.id
@@ -214,6 +251,7 @@ function openCustomFoodDialog(food?: FoodReference) {
     customFoodDialog.alias = food.alias ?? ''
     customFoodDialog.description = food.description ?? ''
     customFoodDialog.referenceGrams = referenceGrams
+    customFoodDialog.referenceUnit = referenceUnit
     customFoodDialog.protein = Number(((food.per100g.protein * referenceGrams) / 100).toFixed(1))
     customFoodDialog.carb = Number(((food.per100g.carb * referenceGrams) / 100).toFixed(1))
     customFoodDialog.fat = Number(((food.per100g.fat * referenceGrams) / 100).toFixed(1))
@@ -228,6 +266,7 @@ function openCustomFoodDialog(food?: FoodReference) {
   customFoodDialog.alias = ''
   customFoodDialog.description = ''
   customFoodDialog.referenceGrams = 100
+  customFoodDialog.referenceUnit = 'g'
   customFoodDialog.protein = 0
   customFoodDialog.carb = 0
   customFoodDialog.fat = 0
@@ -241,7 +280,7 @@ function submitCustomFoodDialog() {
   }
 
   if (!customFoodDialog.referenceGrams || customFoodDialog.referenceGrams <= 0) {
-    ElMessage.warning('請輸入有效的參考重量')
+    ElMessage.warning(`請輸入有效的參考${customFoodDialog.referenceUnit === 'ml' ? '毫升' : '重量'}`)
     return
   }
 
@@ -252,6 +291,7 @@ function submitCustomFoodDialog() {
     alias: customFoodDialog.alias.trim() || undefined,
     description: customFoodDialog.description.trim() || undefined,
     referenceGrams: customFoodDialog.referenceGrams,
+    referenceUnit: customFoodDialog.referenceUnit,
     protein: customFoodDialog.protein,
     carb: customFoodDialog.carb,
     fat: customFoodDialog.fat,
@@ -262,19 +302,32 @@ function submitCustomFoodDialog() {
   customFoodDialog.visible = false
 }
 
-async function removeCustomFood(food: FoodReference) {
-  await ElMessageBox.confirm(`自訂食物「${food.name}」刪除後，之後新增餐點時將無法再直接選取。確定要刪除嗎？`, '刪除自訂食物', {
-    type: 'warning',
-    confirmButtonText: '確認刪除',
-    cancelButtonText: '先保留',
-    confirmButtonClass: 'danger-confirm-button',
-    cancelButtonClass: 'danger-cancel-button',
-    customClass: 'danger-message-box',
-    distinguishCancelAndClose: true,
-  })
+function removeCustomFood(food: FoodReference) {
+  deleteDialog.visible = true
+  deleteDialog.type = 'custom-food'
+  deleteDialog.entry = null
+  deleteDialog.food = food
+}
 
-  nutritionStore.deleteCustomFood(food.id)
-  ElMessage.success('已刪除自訂食物')
+function closeDeleteDialog() {
+  deleteDialog.visible = false
+  deleteDialog.entry = null
+  deleteDialog.food = null
+}
+
+function confirmDeleteDialog() {
+  if (deleteDialog.type === 'entry' && deleteDialog.entry) {
+    nutritionStore.deleteMealEntry(deleteDialog.entry.meal, deleteDialog.entry.id)
+    ElMessage.success('已刪除餐點項目')
+    closeDeleteDialog()
+    return
+  }
+
+  if (deleteDialog.type === 'custom-food' && deleteDialog.food) {
+    nutritionStore.deleteCustomFood(deleteDialog.food.id)
+    ElMessage.success('已刪除自訂食物')
+    closeDeleteDialog()
+  }
 }
 </script>
 
@@ -282,7 +335,14 @@ async function removeCustomFood(food: FoodReference) {
   <main class="nutrition-app">
     <section class="hero-panel">
       <div class="hero-copy">
-        <p class="hero-kicker">Daily Nutrition Calculator</p>
+        <div class="hero-brand">
+          <img :src="logoUrl" alt="Daily Nutrition Calculator logo" class="hero-logo" />
+          <div class="hero-brand-copy">
+            <p class="hero-kicker">Daily Nutrition Calculator</p>
+            <span class="hero-badge">BMR · TDEE · Macro Tracker</span>
+          </div>
+        </div>
+
         <h1>每日熱量與三大營養素追蹤</h1>
         <p class="hero-description">
           依照個人資料計算 BMR 與 TDEE，搭配食品資料庫與自訂食物，建立可長期保存的每日飲食紀錄。
@@ -291,28 +351,34 @@ async function removeCustomFood(food: FoodReference) {
 
       <div class="hero-stats">
         <article class="metric-card">
-          <span>選擇日期</span>
+          <div class="metric-card-head">
+            <span>選擇日期</span>
+            <small>{{ selectedDate }}</small>
+          </div>
           <strong>{{ dateLabel }}</strong>
-          <small>{{ selectedDate }}</small>
         </article>
 
         <article class="metric-card">
-          <span>今日總熱量</span>
+          <div class="metric-card-head">
+            <span>今日總熱量</span>
+            <small>
+              目標
+              {{ effectiveCalorieTarget === null ? '請先完成基本資料' : `${formatNumber(effectiveCalorieTarget, 0)} kcal` }}
+            </small>
+          </div>
           <strong>{{ formatNumber(totals.calories, 0) }} kcal</strong>
-          <small>
-            目標
-            {{ effectiveCalorieTarget === null ? '請先完成基本資料' : `${formatNumber(effectiveCalorieTarget, 0)} kcal` }}
-          </small>
         </article>
 
         <article class="metric-card">
-          <span>BMR / TDEE</span>
+          <div class="metric-card-head">
+            <span>BMR / TDEE</span>
+            <small>依 Mifflin-St Jeor 公式估算</small>
+          </div>
           <strong>
             {{ bmr === null ? '--' : formatNumber(bmr, 0) }}
             /
             {{ tdee === null ? '--' : formatNumber(tdee, 0) }}
           </strong>
-          <small>依 Mifflin-St Jeor 公式估算</small>
         </article>
       </div>
     </section>
@@ -477,66 +543,18 @@ async function removeCustomFood(food: FoodReference) {
             </div>
           </div>
 
-          <div v-if="isCompact" class="table-shell compact-table-shell">
-            <table v-if="entriesByMeal[meal.key].length > 0" class="compact-table">
-              <thead>
-                <tr>
-                  <th>品項</th>
-                  <th>克</th>
-                  <th>kcal</th>
-                  <th>P</th>
-                  <th>C</th>
-                  <th>F</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="entry in entriesByMeal[meal.key]" :key="entry.id">
-                  <td class="compact-name-cell">
-                    <strong>{{ entry.foodNameSnapshot }}</strong>
-                    <span class="compact-meta">
-                      {{ entry.source === 'database' ? '資料庫' : '自訂' }}
-                    </span>
-                  </td>
-                  <td>{{ formatNumber(entry.grams, 0) }}</td>
-                  <td>{{ formatNumber(entry.nutrition.calories, 0) }}</td>
-                  <td>{{ formatNumber(entry.nutrition.protein) }}</td>
-                  <td>{{ formatNumber(entry.nutrition.carb) }}</td>
-                  <td>{{ formatNumber(entry.nutrition.fat) }}</td>
-                  <td class="compact-actions-cell">
-                    <div class="compact-action-group">
-                      <el-button
-                        :icon="EditPen"
-                        circle
-                        size="small"
-                        type="primary"
-                        plain
-                        title="編輯"
-                        @click="editEntry(entry)"
-                      />
-                      <el-button
-                        :icon="Delete"
-                        circle
-                        size="small"
-                        type="danger"
-                        plain
-                        title="刪除"
-                        @click="removeEntry(entry)"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div v-else class="empty-hint">尚未新增餐點</div>
-          </div>
-
-          <div v-else class="table-shell">
-            <el-table :data="entriesByMeal[meal.key]" empty-text="尚未新增餐點" class="entry-table">
-              <el-table-column prop="foodNameSnapshot" label="品項" min-width="220" />
-              <el-table-column prop="grams" label="克數" width="90">
-                <template #default="{ row }">{{ formatNumber(row.grams, 0) }} g</template>
+          <div class="table-shell">
+            <el-table :data="entriesByMeal[meal.key]" empty-text="尚未新增餐點" class="entry-table" scrollbar-always-on>
+              <el-table-column label="品項" min-width="220">
+                <template #default="{ row }">
+                  <div class="table-name-cell">
+                    <strong>{{ row.foodNameSnapshot }}</strong>
+                    <span>{{ `${row.source === 'database' ? '資料庫' : '自訂'} · ${getEntryMeasurementUnit(row)}` }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="grams" label="份量" width="110">
+                <template #default="{ row }">{{ formatNumber(row.grams, 0) }} {{ getEntryMeasurementUnit(row) }}</template>
               </el-table-column>
               <el-table-column label="蛋白質" width="110">
                 <template #default="{ row }">{{ formatNumber(row.nutrition.protein) }} g</template>
@@ -550,7 +568,7 @@ async function removeCustomFood(food: FoodReference) {
               <el-table-column label="熱量" width="110">
                 <template #default="{ row }">{{ formatNumber(row.nutrition.calories, 0) }} kcal</template>
               </el-table-column>
-              <el-table-column label="操作" width="160" :fixed="isCompact ? false : 'right'">
+              <el-table-column label="操作" width="160">
                 <template #default="{ row }">
                   <div class="table-actions">
                     <el-button type="primary" plain size="small" @click="editEntry(row)">編輯</el-button>
@@ -592,25 +610,8 @@ async function removeCustomFood(food: FoodReference) {
           </div>
         </div>
 
-        <div v-if="isCompact" class="summary-card-list">
-          <article v-for="row in summaryRows" :key="row.key" class="summary-card-item">
-            <div class="summary-card-head">
-              <strong>{{ row.label }}</strong>
-              <el-tag :type="row.difference === null ? 'info' : row.difference > 0 ? 'danger' : row.difference < 0 ? 'success' : 'info'">
-                {{
-                  row.difference === null
-                    ? '—'
-                    : `${row.difference > 0 ? '+' : ''}${formatNumber(row.difference, row.unit === 'kcal' ? 0 : 1)} ${row.unit}`
-                }}
-              </el-tag>
-            </div>
-            <p>目標：{{ row.target === null ? '—' : `${formatNumber(row.target, row.unit === 'kcal' ? 0 : 1)} ${row.unit}` }}</p>
-            <p>實際：{{ `${formatNumber(row.actual, row.unit === 'kcal' ? 0 : 1)} ${row.unit}` }}</p>
-          </article>
-        </div>
-
-        <div v-else class="table-shell">
-          <el-table :data="summaryRows" class="summary-table">
+        <div class="table-shell">
+          <el-table :data="summaryRows" class="summary-table" scrollbar-always-on>
             <el-table-column prop="label" label="指標" min-width="120" />
             <el-table-column label="目標" min-width="120">
               <template #default="{ row }">
@@ -655,62 +656,21 @@ async function removeCustomFood(food: FoodReference) {
           class="section-alert"
         />
 
-        <div v-if="isCompact" class="table-shell compact-table-shell">
-          <table v-if="customFoods.length > 0" class="compact-table">
-            <thead>
-              <tr>
-                <th>名稱</th>
-                <th>kcal</th>
-                <th>P</th>
-                <th>C</th>
-                <th>F</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="food in customFoods" :key="food.id">
-                <td class="compact-name-cell">
-                  <strong>{{ food.name }}</strong>
-                  <span class="compact-meta">{{ food.category || '未分類' }}</span>
-                </td>
-                <td>{{ formatNumber(food.per100g.calories, 0) }}</td>
-                <td>{{ formatNumber(food.per100g.protein) }}</td>
-                <td>{{ formatNumber(food.per100g.carb) }}</td>
-                <td>{{ formatNumber(food.per100g.fat) }}</td>
-                <td class="compact-actions-cell">
-                  <div class="compact-action-group">
-                    <el-button
-                      :icon="EditPen"
-                      circle
-                      size="small"
-                      type="primary"
-                      plain
-                      title="編輯"
-                      @click="openCustomFoodDialog(food)"
-                    />
-                    <el-button
-                      :icon="Delete"
-                      circle
-                      size="small"
-                      type="danger"
-                      plain
-                      title="刪除"
-                      @click="removeCustomFood(food)"
-                    />
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div v-else class="empty-hint">尚未建立自訂食物</div>
-        </div>
-
-        <div v-else class="table-shell">
-          <el-table :data="customFoods" empty-text="尚未建立自訂食物" class="custom-food-table">
-            <el-table-column prop="name" label="名稱" min-width="180" />
+        <div class="table-shell">
+          <el-table :data="customFoods" empty-text="尚未建立自訂食物" class="custom-food-table" scrollbar-always-on>
+            <el-table-column label="名稱" min-width="180">
+              <template #default="{ row }">
+                <div class="table-name-cell">
+                  <strong>{{ row.name }}</strong>
+                  <span>{{ `${row.category || '未分類'} · 100 ${getFoodMeasurementUnit(row)}` }}</span>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column prop="category" label="分類" min-width="110" />
-            <el-table-column label="每 100g 熱量" width="130">
+            <el-table-column label="基準" width="100">
+              <template #default="{ row }">100 {{ getFoodMeasurementUnit(row) }}</template>
+            </el-table-column>
+            <el-table-column label="熱量" width="130">
               <template #default="{ row }">{{ formatNumber(row.per100g.calories, 0) }} kcal</template>
             </el-table-column>
             <el-table-column label="蛋白質" width="100">
@@ -722,7 +682,7 @@ async function removeCustomFood(food: FoodReference) {
             <el-table-column label="脂肪" width="100">
               <template #default="{ row }">{{ formatNumber(row.per100g.fat) }} g</template>
             </el-table-column>
-            <el-table-column label="操作" width="160" :fixed="isCompact ? false : 'right'">
+            <el-table-column label="操作" width="160">
               <template #default="{ row }">
                 <div class="table-actions">
                   <el-button type="primary" plain size="small" @click="openCustomFoodDialog(row)">編輯</el-button>
@@ -735,13 +695,16 @@ async function removeCustomFood(food: FoodReference) {
       </article>
     </section>
 
-    <el-dialog
-      v-model="entryDialog.visible"
-      :title="entryDialog.mode === 'edit' ? '編輯餐點項目' : `新增${MEAL_DEFINITIONS.find((item) => item.key === entryDialog.meal)?.label ?? ''}餐點`"
-      width="min(960px, 92vw)"
-      class="app-dialog entry-dialog"
-      destroy-on-close
-    >
+      <el-dialog
+        v-model="entryDialog.visible"
+        :title="entryDialog.mode === 'edit' ? '編輯餐點項目' : `新增${MEAL_DEFINITIONS.find((item) => item.key === entryDialog.meal)?.label ?? ''}餐點`"
+        width="min(960px, 92vw)"
+        class="app-dialog entry-dialog"
+        align-center
+        :close-on-click-modal="false"
+        :close-on-press-escape="false"
+        destroy-on-close
+      >
       <div class="dialog-layout">
         <div class="dialog-main dialog-panel">
           <el-form label-position="top">
@@ -766,24 +729,30 @@ async function removeCustomFood(food: FoodReference) {
                 <span>{{ filteredEntryFoods.length }} 筆</span>
               </div>
 
-              <div class="food-results">
-                <button
-                  v-for="food in filteredEntryFoods"
-                  :key="food.id"
-                  type="button"
-                  class="food-option"
-                  :class="{ 'is-selected': food.id === entryDialog.selectedFoodId }"
-                  @click="entryDialog.selectedFoodId = food.id"
-                >
-                  <strong>{{ food.name }}</strong>
-                  <span>{{ food.category || '未分類' }}</span>
-                  <small>{{ food.alias || food.description || '—' }}</small>
-                </button>
-
-                <div v-if="filteredEntryFoods.length === 0" class="empty-hint">
-                  {{ entryDialog.source === 'custom' ? '目前沒有符合條件的自訂食物' : '找不到符合條件的食品資料' }}
-                </div>
-              </div>
+              <el-table
+                :data="filteredEntryFoods"
+                row-key="id"
+                highlight-current-row
+                :current-row-key="entryDialog.selectedFoodId"
+                :empty-text="entryDialog.source === 'custom' ? '目前沒有符合條件的自訂食物' : '找不到符合條件的食品資料'"
+                :max-height="320"
+                class="search-results-table"
+                @row-click="selectEntryFood"
+              >
+                <el-table-column label="名稱" min-width="200">
+                  <template #default="{ row }">
+                    <div class="table-name-cell">
+                      <strong>{{ row.name }}</strong>
+                      <span>{{ row.category || '未分類' }}</span>
+                    </div>
+                  </template>
+                </el-table-column>
+                <el-table-column label="說明" min-width="220">
+                  <template #default="{ row }">
+                    {{ row.alias || row.description || '—' }}
+                  </template>
+                </el-table-column>
+              </el-table>
             </div>
           </el-form>
         </div>
@@ -797,35 +766,58 @@ async function removeCustomFood(food: FoodReference) {
 
             <div class="selection-hero">
               <h3>{{ selectedEntryFood?.name ?? '尚未選擇食品' }}</h3>
-              <p class="selection-meta">{{ selectedEntryFood?.category || '請從左側列表選一個項目' }}</p>
+              <p class="selection-meta">
+                {{ selectedEntryFood?.category || '請從左側列表選一個項目' }}
+                {{ selectedEntryFood ? ` · 每 100${selectedEntryUnit}` : '' }}
+              </p>
             </div>
 
             <template v-if="selectedEntryFood">
-              <div class="per100-grid">
-                <div>
-                  <span>熱量</span>
-                  <strong>{{ formatNumber(selectedEntryFood.per100g.calories, 0) }}</strong>
-                </div>
-                <div>
-                  <span>蛋白質</span>
-                  <strong>{{ formatNumber(selectedEntryFood.per100g.protein) }}</strong>
-                </div>
-                <div>
-                  <span>碳水</span>
-                  <strong>{{ formatNumber(selectedEntryFood.per100g.carb) }}</strong>
-                </div>
-                <div>
-                  <span>脂肪</span>
-                  <strong>{{ formatNumber(selectedEntryFood.per100g.fat) }}</strong>
-                </div>
-              </div>
+              <el-descriptions :column="1" border class="preview-descriptions selection-descriptions">
+                <el-descriptions-item label="熱量">
+                  {{ formatNumber(selectedEntryFood.per100g.calories, 0) }} kcal
+                </el-descriptions-item>
+                <el-descriptions-item label="蛋白質">
+                  {{ formatNumber(selectedEntryFood.per100g.protein) }} g
+                </el-descriptions-item>
+                <el-descriptions-item label="碳水">
+                  {{ formatNumber(selectedEntryFood.per100g.carb) }} g
+                </el-descriptions-item>
+                <el-descriptions-item label="脂肪">
+                  {{ formatNumber(selectedEntryFood.per100g.fat) }} g
+                </el-descriptions-item>
+              </el-descriptions>
             </template>
 
             <el-form label-position="top" class="dialog-form">
-              <el-form-item label="食用克數">
+              <el-form-item :label="`食用份量 (${selectedEntryUnit})`">
                 <el-input-number v-model="entryDialog.grams" :min="1" :step="5" controls-position="right" />
               </el-form-item>
             </el-form>
+
+            <template v-if="entryNutritionPreview">
+              <div class="dialog-section">
+                <div class="dialog-section-head">
+                  <strong>本次加入預覽</strong>
+                  <span>{{ `${formatNumber(entryDialog.grams, 0)} ${selectedEntryUnit}` }}</span>
+                </div>
+
+                <el-descriptions :column="1" border class="preview-descriptions">
+                  <el-descriptions-item label="熱量">
+                    {{ formatNumber(entryNutritionPreview.calories, 0) }} kcal
+                  </el-descriptions-item>
+                  <el-descriptions-item label="蛋白質">
+                    {{ formatNumber(entryNutritionPreview.protein) }} g
+                  </el-descriptions-item>
+                  <el-descriptions-item label="碳水">
+                    {{ formatNumber(entryNutritionPreview.carb) }} g
+                  </el-descriptions-item>
+                  <el-descriptions-item label="脂肪">
+                    {{ formatNumber(entryNutritionPreview.fat) }} g
+                  </el-descriptions-item>
+                </el-descriptions>
+              </div>
+            </template>
           </div>
         </aside>
       </div>
@@ -841,10 +833,13 @@ async function removeCustomFood(food: FoodReference) {
     <el-dialog
       v-model="customFoodDialog.visible"
       :title="customFoodDialog.mode === 'edit' ? '編輯自訂食物' : '新增自訂食物'"
-      width="min(720px, 92vw)"
-      class="app-dialog custom-food-dialog"
-      destroy-on-close
-    >
+        width="min(860px, 92vw)"
+        class="app-dialog custom-food-dialog"
+        align-center
+        :close-on-click-modal="false"
+        :close-on-press-escape="false"
+        destroy-on-close
+      >
       <div class="custom-food-layout">
         <div class="custom-food-main dialog-panel">
           <el-form label-position="top" class="stack-form">
@@ -867,10 +862,14 @@ async function removeCustomFood(food: FoodReference) {
                   <el-input v-model="customFoodDialog.alias" placeholder="可不填" />
                 </el-form-item>
 
-                <el-form-item label="參考重量 (g)">
+                <el-form-item :label="`參考基準 (${customFoodDialog.referenceUnit})`">
                   <el-input-number v-model="customFoodDialog.referenceGrams" :min="1" :step="10" controls-position="right" />
                 </el-form-item>
               </div>
+
+              <el-form-item label="基準單位">
+                <el-segmented v-model="customFoodDialog.referenceUnit" :options="MEASUREMENT_UNIT_OPTIONS" block />
+              </el-form-item>
 
               <el-form-item label="描述">
                 <el-input
@@ -885,7 +884,7 @@ async function removeCustomFood(food: FoodReference) {
             <div class="dialog-section">
               <div class="dialog-section-head">
                 <strong>營養數值</strong>
-                <span>輸入參考重量對應的營養素</span>
+                <span>輸入參考基準對應的營養素</span>
               </div>
 
               <div class="form-grid form-grid-4">
@@ -916,15 +915,21 @@ async function removeCustomFood(food: FoodReference) {
               <span>送出前確認</span>
             </div>
 
-            <div class="preview-metric">
-              <span>參考重量熱量</span>
-              <strong>{{ formatNumber(customFoodCaloriesPreview, 0) }} kcal</strong>
-            </div>
+            <el-descriptions :column="1" border class="preview-descriptions">
+              <el-descriptions-item label="參考基準熱量">
+                {{ formatNumber(customFoodCaloriesPreview, 0) }} kcal
+              </el-descriptions-item>
+              <el-descriptions-item label="儲存格式">
+                {{ `每 100${customFoodDialog.referenceUnit} 營養值` }}
+              </el-descriptions-item>
+            </el-descriptions>
 
-            <div class="preview-note">
-              <span>正規化後</span>
-              <strong>將保存為每 100g 營養值</strong>
-            </div>
+            <el-alert
+              :title="`系統會依照你輸入的參考基準，正規化為每 100${customFoodDialog.referenceUnit} 的營養資料。`"
+              type="info"
+              :closable="false"
+              show-icon
+            />
           </div>
         </aside>
       </div>
@@ -934,6 +939,41 @@ async function removeCustomFood(food: FoodReference) {
           {{ customFoodDialog.mode === 'edit' ? '儲存變更' : '建立自訂食物' }}
         </el-button>
         <el-button @click="customFoodDialog.visible = false">取消</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="deleteDialog.visible"
+      :title="deleteDialogTitle"
+      width="min(460px, 92vw)"
+      class="app-dialog delete-dialog"
+      align-center
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      destroy-on-close
+    >
+      <el-alert type="warning" :closable="false" show-icon>
+        <template #title>
+          {{ deleteDialogDescription }}
+        </template>
+      </el-alert>
+
+      <div class="dialog-section">
+        <div class="dialog-section-head">
+          <strong>確認刪除</strong>
+          <span>{{ deleteDialog.type === 'entry' ? '此操作不會自動還原' : '刪除後需重新建立' }}</span>
+        </div>
+
+        <el-descriptions :column="1" border class="preview-descriptions">
+          <el-descriptions-item label="項目名稱">
+            {{ deleteDialogSubject || '未選取項目' }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+
+      <template #footer>
+        <el-button type="danger" @click="confirmDeleteDialog">確認刪除</el-button>
+        <el-button type="info" plain @click="closeDeleteDialog">先保留</el-button>
       </template>
     </el-dialog>
   </main>

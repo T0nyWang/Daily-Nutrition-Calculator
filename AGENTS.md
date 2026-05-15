@@ -33,6 +33,14 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
+## Component Usage First
+
+**Check the official component usage before deciding to customize.**
+
+- Before implementing UI behavior or styling, review the official component API and recommended usage first.
+- If the official component can solve the problem, use it directly instead of building a parallel custom solution.
+- If styling must change, prefer overriding the component's existing styles over creating a separate visual system.
+
 ## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**

@@ -102,6 +102,7 @@ export const useNutritionStore = defineStore('nutrition', () => {
       foodId: food.id,
       foodNameSnapshot: food.name,
       grams,
+      unit: food.per100Unit ?? food.referenceUnit ?? 'g',
       nutrition: calculateNutritionFromFood(food, grams),
       source: food.source,
     }

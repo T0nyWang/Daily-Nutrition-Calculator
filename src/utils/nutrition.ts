@@ -61,6 +61,14 @@ export function calculateNutritionFromFood(food: FoodReference, grams: number): 
   }
 }
 
+export function getFoodMeasurementUnit(food: Pick<FoodReference, 'per100Unit' | 'referenceUnit'>) {
+  return food.per100Unit ?? food.referenceUnit ?? 'g'
+}
+
+export function getEntryMeasurementUnit(entry: Pick<MealEntry, 'unit'>) {
+  return entry.unit ?? 'g'
+}
+
 export function emptyNutritionValues(): NutritionValues {
   return {
     calories: 0,
@@ -177,12 +185,14 @@ export function normalizeCustomFood(input: CustomFoodInput): FoodReference {
     alias: input.alias,
     description: input.description,
     referenceGrams,
+    referenceUnit: input.referenceUnit,
     per100g: {
       calories: roundNumber(calories * scale, 1),
       protein: roundNumber(input.protein * scale, 1),
       carb: roundNumber(input.carb * scale, 1),
       fat: roundNumber(input.fat * scale, 1),
     },
+    per100Unit: input.referenceUnit,
     searchText: normalizeFoodSearch([input.name, input.alias, input.description, input.category].filter(Boolean).join(' ')),
   }
 }
