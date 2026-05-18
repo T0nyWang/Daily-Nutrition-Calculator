@@ -2,6 +2,7 @@
 import { computed, reactive } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
+import type { SummaryMethod } from 'element-plus'
 
 import {
   ACTIVITY_LEVEL_OPTIONS,
@@ -150,6 +151,26 @@ const customFoodCaloriesPreview = computed(() => {
     fat: customFoodDialog.fat,
   })
 })
+
+type MealTableSummaryProps = Parameters<SummaryMethod<MealEntry>>[0]
+
+function getMealTableSummary(_: MealTableSummaryProps, meal: MealKey) {
+  const totals = mealTotals.value[meal]
+
+  return [
+    '總計',
+    `${totals.count} 項`,
+    `${formatNumber(totals.protein)} g`,
+    `${formatNumber(totals.carb)} g`,
+    `${formatNumber(totals.fat)} g`,
+    `${formatNumber(totals.calories, 0)} kcal`,
+    '',
+  ]
+}
+
+function getMealTableSummaryMethod(meal: MealKey): SummaryMethod<MealEntry> {
+  return (summary) => getMealTableSummary(summary, meal)
+}
 
 const deleteDialogTitle = computed(() => {
   return deleteDialog.type === 'entry' ? '刪除餐點項目' : '刪除自訂食物'
@@ -545,7 +566,14 @@ function confirmDeleteDialog() {
           </div>
 
           <div class="table-shell">
-            <el-table :data="entriesByMeal[meal.key]" empty-text="尚未新增餐點" class="entry-table" scrollbar-always-on>
+            <el-table
+              :data="entriesByMeal[meal.key]"
+              empty-text="尚未新增餐點"
+              class="entry-table"
+              scrollbar-always-on
+              show-summary
+              :summary-method="getMealTableSummaryMethod(meal.key)"
+            >
               <el-table-column label="品項" min-width="220">
                 <template #default="{ row }">
                   <div class="table-name-cell">
