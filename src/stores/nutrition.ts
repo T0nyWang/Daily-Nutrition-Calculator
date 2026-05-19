@@ -232,6 +232,18 @@ export const useNutritionStore = defineStore('nutrition', () => {
   let applyingRemoteDailyLog = false
   let userSettingsSaveTimer: ReturnType<typeof setTimeout> | null = null
   let dailyLogSaveTimer: ReturnType<typeof setTimeout> | null = null
+  let userSettingsLoadRequestId = 0
+  let dailyLogLoadRequestId = 0
+  let dailyLogLoadRequestIdsByDate: Record<string, number> = {}
+  let customFoodsLoadRequestId = 0
+
+  function isCurrentUser(uid: string) {
+    return useAuthStore().currentUser?.uid === uid
+  }
+
+  function isCurrentDailyLogRequest(uid: string, dateKey: string, requestId: number) {
+    return isCurrentUser(uid) && dailyLogLoadRequestIdsByDate[dateKey] === requestId
+  }
 
   function ensureDailyLog(dateKey: string) {
     const existing = dailyLogs.value[dateKey]
@@ -267,6 +279,33 @@ export const useNutritionStore = defineStore('nutrition', () => {
     dailyLogSaveTimer = null
   }
 
+  function resetUserNutritionState() {
+    userSettingsLoadRequestId += 1
+    dailyLogLoadRequestId += 1
+    dailyLogLoadRequestIdsByDate = {}
+    customFoodsLoadRequestId += 1
+
+    clearUserSettingsSaveTimer()
+    clearDailyLogSaveTimer()
+
+    applyingRemoteUserSettings = false
+    applyingRemoteDailyLog = false
+    userSettingsReady.value = false
+    dailyLogReadyDate.value = ''
+    customFoodsReady.value = false
+    userSettingsLoading.value = false
+    dailyLogLoading.value = false
+    customFoodsLoading.value = false
+    userSettingsError.value = ''
+    dailyLogError.value = ''
+    customFoodsError.value = ''
+    profile.value = normalizeProfile(DEFAULT_PROFILE)
+    globalTargets.value = normalizeTargets(DEFAULT_TARGETS)
+    dailyLogs.value = {}
+    customFoods.value = []
+    ensureDailyLog(selectedDate.value)
+  }
+
   function scheduleSaveUserSettings() {
     const authStore = useAuthStore()
     const uid = authStore.currentUser?.uid
@@ -277,14 +316,22 @@ export const useNutritionStore = defineStore('nutrition', () => {
 
     clearUserSettingsSaveTimer()
     userSettingsSaveTimer = setTimeout(async () => {
+      if (!isCurrentUser(uid)) {
+        return
+      }
+
       try {
         await saveUserSettings(uid, {
           profile: profile.value,
           globalTargets: globalTargets.value,
         })
-        userSettingsError.value = ''
+        if (isCurrentUser(uid)) {
+          userSettingsError.value = ''
+        }
       } catch {
-        userSettingsError.value = '帳號資料同步失敗，請稍後再試'
+        if (isCurrentUser(uid)) {
+          userSettingsError.value = '帳號資料同步失敗，請稍後再試'
+        }
       }
     }, 600)
   }
@@ -300,16 +347,26 @@ export const useNutritionStore = defineStore('nutrition', () => {
 
     clearDailyLogSaveTimer()
     dailyLogSaveTimer = setTimeout(async () => {
+      if (!isCurrentUser(uid) || selectedDate.value !== dateKey) {
+        return
+      }
+
       try {
         await saveDailyLog(uid, ensureDailyLog(dateKey))
-        dailyLogError.value = ''
+        if (isCurrentUser(uid) && selectedDate.value === dateKey) {
+          dailyLogError.value = ''
+        }
       } catch {
-        dailyLogError.value = '每日紀錄同步失敗，請稍後再試'
+        if (isCurrentUser(uid) && selectedDate.value === dateKey) {
+          dailyLogError.value = '每日紀錄同步失敗，請稍後再試'
+        }
       }
     }, 600)
   }
 
   async function loadRemoteUserSettings(uid: string) {
+    const requestId = userSettingsLoadRequestId + 1
+    userSettingsLoadRequestId = requestId
     clearUserSettingsSaveTimer()
     userSettingsLoading.value = true
     userSettingsError.value = ''
@@ -317,6 +374,11 @@ export const useNutritionStore = defineStore('nutrition', () => {
 
     try {
       const settings = await loadUserSettings(uid)
+
+      if (!isCurrentUser(uid) || requestId !== userSettingsLoadRequestId) {
+        return
+      }
+
       applyingRemoteUserSettings = true
 
       if (settings?.profile) {
@@ -333,21 +395,28 @@ export const useNutritionStore = defineStore('nutrition', () => {
       applyingRemoteUserSettings = false
       userSettingsReady.value = true
 
-      if (!settings) {
+      if (!settings && isCurrentUser(uid) && requestId === userSettingsLoadRequestId) {
         await saveUserSettings(uid, {
           profile: profile.value,
           globalTargets: globalTargets.value,
         })
       }
     } catch (error) {
-      userSettingsError.value = appendErrorDetail('帳號資料讀取失敗，請確認 Firestore 規則或網路狀態', error)
+      if (isCurrentUser(uid) && requestId === userSettingsLoadRequestId) {
+        userSettingsError.value = appendErrorDetail('帳號資料讀取失敗，請確認 Firestore 規則或網路狀態', error)
+      }
     } finally {
-      applyingRemoteUserSettings = false
-      userSettingsLoading.value = false
+      if (isCurrentUser(uid) && requestId === userSettingsLoadRequestId) {
+        applyingRemoteUserSettings = false
+        userSettingsLoading.value = false
+      }
     }
   }
 
   async function loadRemoteDailyLog(uid: string, dateKey: string) {
+    const requestId = dailyLogLoadRequestId + 1
+    dailyLogLoadRequestId = requestId
+    dailyLogLoadRequestIdsByDate[dateKey] = requestId
     clearDailyLogSaveTimer()
     dailyLogLoading.value = true
     dailyLogError.value = ''
@@ -355,7 +424,12 @@ export const useNutritionStore = defineStore('nutrition', () => {
 
     try {
       const remoteLog = await loadDailyLog(uid, dateKey)
-      const nextLog = remoteLog ? normalizeDailyLog(remoteLog, dateKey) : ensureDailyLog(dateKey)
+
+      if (!isCurrentDailyLogRequest(uid, dateKey, requestId)) {
+        return
+      }
+
+      const nextLog = remoteLog ? normalizeDailyLog(remoteLog, dateKey) : createDailyLog(dateKey, globalTargets.value)
       applyingRemoteDailyLog = true
       dailyLogs.value = {
         ...dailyLogs.value,
@@ -363,26 +437,39 @@ export const useNutritionStore = defineStore('nutrition', () => {
       }
       await nextTick()
       applyingRemoteDailyLog = false
-      dailyLogReadyDate.value = dateKey
 
-      if (!remoteLog) {
+      if (selectedDate.value === dateKey && isCurrentDailyLogRequest(uid, dateKey, requestId)) {
+        dailyLogReadyDate.value = dateKey
+      }
+
+      if (!remoteLog && isCurrentDailyLogRequest(uid, dateKey, requestId)) {
         await saveDailyLog(uid, nextLog)
       }
     } catch (error) {
-      dailyLogError.value = appendErrorDetail('每日紀錄讀取失敗，請確認 Firestore 規則或網路狀態', error)
+      if (selectedDate.value === dateKey && isCurrentDailyLogRequest(uid, dateKey, requestId)) {
+        dailyLogError.value = appendErrorDetail('每日紀錄讀取失敗，請確認 Firestore 規則或網路狀態', error)
+      }
     } finally {
-      applyingRemoteDailyLog = false
-      dailyLogLoading.value = false
+      if (selectedDate.value === dateKey && isCurrentDailyLogRequest(uid, dateKey, requestId)) {
+        applyingRemoteDailyLog = false
+        dailyLogLoading.value = false
+      }
     }
   }
 
   async function loadRemoteCustomFoods(uid: string) {
+    const requestId = customFoodsLoadRequestId + 1
+    customFoodsLoadRequestId = requestId
     customFoodsLoading.value = true
     customFoodsError.value = ''
     customFoodsReady.value = false
 
     try {
       const remoteFoods = await loadCustomFoods(uid)
+
+      if (!isCurrentUser(uid) || requestId !== customFoodsLoadRequestId) {
+        return
+      }
 
       if (remoteFoods.length) {
         customFoods.value = normalizeCustomFoods(remoteFoods)
@@ -391,19 +478,31 @@ export const useNutritionStore = defineStore('nutrition', () => {
       await nextTick()
       customFoodsReady.value = true
 
-      if (!remoteFoods.length && customFoods.value.length) {
+      if (!remoteFoods.length && customFoods.value.length && isCurrentUser(uid) && requestId === customFoodsLoadRequestId) {
         await Promise.all(customFoods.value.map((food) => saveRemoteCustomFood(uid, food)))
       }
     } catch (error) {
-      customFoodsError.value = appendErrorDetail('自訂食物讀取失敗，請確認 Firestore 規則或網路狀態', error)
+      if (isCurrentUser(uid) && requestId === customFoodsLoadRequestId) {
+        customFoodsError.value = appendErrorDetail('自訂食物讀取失敗，請確認 Firestore 規則或網路狀態', error)
+      }
     } finally {
-      customFoodsLoading.value = false
+      if (isCurrentUser(uid) && requestId === customFoodsLoadRequestId) {
+        customFoodsLoading.value = false
+      }
     }
   }
 
   async function loadRemoteUserData(uid: string) {
     await loadRemoteUserSettings(uid)
+    if (!isCurrentUser(uid)) {
+      return
+    }
+
     await loadRemoteCustomFoods(uid)
+    if (!isCurrentUser(uid)) {
+      return
+    }
+
     await loadRemoteDailyLog(uid, selectedDate.value)
   }
 
@@ -418,16 +517,9 @@ export const useNutritionStore = defineStore('nutrition', () => {
     watch(
       () => authStore.currentUser,
       (user) => {
-        clearUserSettingsSaveTimer()
-        clearDailyLogSaveTimer()
+        resetUserNutritionState()
 
         if (!user) {
-          userSettingsReady.value = false
-          dailyLogReadyDate.value = ''
-          customFoodsReady.value = false
-          userSettingsError.value = ''
-          dailyLogError.value = ''
-          customFoodsError.value = ''
           return
         }
 
@@ -541,9 +633,13 @@ export const useNutritionStore = defineStore('nutrition', () => {
 
     try {
       await saveRemoteCustomFood(uid, food)
-      customFoodsError.value = ''
+      if (isCurrentUser(uid)) {
+        customFoodsError.value = ''
+      }
     } catch (error) {
-      customFoodsError.value = appendErrorDetail('自訂食物同步失敗，請稍後再試', error)
+      if (isCurrentUser(uid)) {
+        customFoodsError.value = appendErrorDetail('自訂食物同步失敗，請稍後再試', error)
+      }
     }
   }
 
@@ -556,9 +652,13 @@ export const useNutritionStore = defineStore('nutrition', () => {
 
     try {
       await deleteRemoteCustomFood(uid, foodId)
-      customFoodsError.value = ''
+      if (isCurrentUser(uid)) {
+        customFoodsError.value = ''
+      }
     } catch (error) {
-      customFoodsError.value = appendErrorDetail('自訂食物刪除同步失敗，請稍後再試', error)
+      if (isCurrentUser(uid)) {
+        customFoodsError.value = appendErrorDetail('自訂食物刪除同步失敗，請稍後再試', error)
+      }
     }
   }
 
