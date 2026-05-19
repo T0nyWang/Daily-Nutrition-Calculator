@@ -27,7 +27,7 @@ const { customFoods } = storeToRefs(nutritionStore)
     </div>
 
     <el-alert
-      title="自訂食物會保存到 localStorage，之後任何日期都可以重複使用。"
+      title="自訂食物會同步到目前登入帳號，之後任何日期都可以重複使用。"
       type="info"
       :closable="false"
       show-icon

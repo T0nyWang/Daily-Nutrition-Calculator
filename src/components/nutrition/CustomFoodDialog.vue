@@ -93,9 +93,9 @@ function submitCustomFoodDialog() {
   nutritionStore.saveCustomFood({
     id: customFoodDialog.mode === 'edit' ? customFoodDialog.id : undefined,
     name: customFoodDialog.name.trim(),
-    category: customFoodDialog.category.trim() || undefined,
-    alias: customFoodDialog.alias.trim() || undefined,
-    description: customFoodDialog.description.trim() || undefined,
+    category: customFoodDialog.category.trim() || null,
+    alias: customFoodDialog.alias.trim() || null,
+    description: customFoodDialog.description.trim() || null,
     referenceGrams: customFoodDialog.referenceGrams,
     referenceUnit: customFoodDialog.referenceUnit,
     protein: customFoodDialog.protein,

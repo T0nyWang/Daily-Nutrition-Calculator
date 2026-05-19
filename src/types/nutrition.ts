@@ -32,9 +32,9 @@ export interface FoodReference {
   id: string
   source: FoodSource
   name: string
-  category?: string
-  alias?: string
-  description?: string
+  category: string | null
+  alias: string | null
+  description: string | null
   referenceGrams?: number
   referenceUnit?: MeasurementUnit
   per100g: NutritionValues
@@ -76,9 +76,9 @@ export interface SummaryRow {
 export interface CustomFoodInput {
   id?: string
   name: string
-  category?: string
-  alias?: string
-  description?: string
+  category: string | null
+  alias: string | null
+  description: string | null
   referenceGrams: number
   referenceUnit: MeasurementUnit
   protein: number

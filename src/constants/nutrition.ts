@@ -6,13 +6,6 @@ import type {
   UserProfile,
 } from '../types/nutrition'
 
-export const STORAGE_KEYS = {
-  profile: 'dnc.profile.v1',
-  targets: 'dnc.targets.v1',
-  dailyLogs: 'dnc.dailyLogs.v1',
-  customFoods: 'dnc.customFoods.v1',
-} as const
-
 export const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
   light: 1.375,

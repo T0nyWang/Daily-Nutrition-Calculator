@@ -181,9 +181,9 @@ export function normalizeCustomFood(input: CustomFoodInput): FoodReference {
     id: input.id ?? `custom-${crypto.randomUUID()}`,
     source: 'custom',
     name: input.name,
-    category: input.category,
-    alias: input.alias,
-    description: input.description,
+    category: input.category ?? null,
+    alias: input.alias ?? null,
+    description: input.description ?? null,
     referenceGrams,
     referenceUnit: input.referenceUnit,
     per100g: {

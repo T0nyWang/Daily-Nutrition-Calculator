@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { storeToRefs } from 'pinia'
 
+import AuthPanel from '../components/auth/AuthPanel.vue'
 import CustomFoodDialog from '../components/nutrition/CustomFoodDialog.vue'
 import CustomFoodsPanel from '../components/nutrition/CustomFoodsPanel.vue'
 import DailyTargetsPanel from '../components/nutrition/DailyTargetsPanel.vue'
@@ -10,7 +12,7 @@ import HeroPanel from '../components/nutrition/HeroPanel.vue'
 import MealsPanel from '../components/nutrition/MealsPanel.vue'
 import ProfilePanel from '../components/nutrition/ProfilePanel.vue'
 import SummaryPanel from '../components/nutrition/SummaryPanel.vue'
-import { useNutritionStore } from '../stores'
+import { useAuthStore, useNutritionStore } from '../stores'
 import type { FoodReference, FoodSource, MealEntry, MealKey } from '../types/nutrition'
 
 interface EntryDialogExpose {
@@ -27,12 +29,23 @@ interface DeleteConfirmDialogExpose {
   openCustomFood(food: FoodReference): void
 }
 
+const authStore = useAuthStore()
 const nutritionStore = useNutritionStore()
+const { authLoading, isAuthenticated } = storeToRefs(authStore)
+const {
+  customFoodsError,
+  customFoodsLoading,
+  dailyLogError,
+  dailyLogLoading,
+  userSettingsError,
+  userSettingsLoading,
+} = storeToRefs(nutritionStore)
 const entryDialogRef = ref<EntryDialogExpose>()
 const customFoodDialogRef = ref<CustomFoodDialogExpose>()
 const deleteConfirmDialogRef = ref<DeleteConfirmDialogExpose>()
 
 nutritionStore.loadDatabase()
+nutritionStore.initializeUserDataSync()
 
 function handleCreateEntry(payload: { meal: MealKey; source: FoodSource }) {
   entryDialogRef.value?.openCreate(payload.meal, payload.source)
@@ -60,8 +73,42 @@ function handleDeleteCustomFood(food: FoodReference) {
 </script>
 
 <template>
-  <main class="nutrition-app">
+  <main v-if="authLoading" class="nutrition-app auth-gate">
     <HeroPanel />
+    <article class="app-panel auth-panel">
+      <el-skeleton :rows="4" animated />
+    </article>
+  </main>
+
+  <main v-else-if="!isAuthenticated" class="nutrition-app auth-gate">
+    <HeroPanel />
+    <AuthPanel />
+  </main>
+
+  <main v-else class="nutrition-app">
+    <HeroPanel />
+
+    <AuthPanel compact />
+
+    <el-alert
+      v-if="userSettingsLoading || customFoodsLoading || dailyLogLoading"
+      :title="
+        userSettingsLoading ? '正在同步帳號設定' : customFoodsLoading ? '正在同步自訂食物' : '正在同步每日紀錄'
+      "
+      type="info"
+      :closable="false"
+      show-icon
+      class="section-alert"
+    />
+
+    <el-alert
+      v-else-if="userSettingsError || customFoodsError || dailyLogError"
+      :title="userSettingsError || customFoodsError || dailyLogError"
+      type="error"
+      :closable="false"
+      show-icon
+      class="section-alert"
+    />
 
     <section class="panel-grid top-grid">
       <ProfilePanel />
