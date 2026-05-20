@@ -39,6 +39,11 @@ async function validateAuthForm() {
   return (await formRef.value?.validate().catch(() => false)) === true
 }
 
+async function validateEmailField() {
+  formRef.value?.clearValidate('password')
+  return (await formRef.value?.validateField('email').catch(() => false)) === true
+}
+
 async function handleSignIn() {
   if (!(await validateAuthForm())) {
     return
@@ -57,7 +62,7 @@ async function handleSignIn() {
 }
 
 async function handlePasswordReset() {
-  if (!(await validateAuthForm())) {
+  if (!(await validateEmailField())) {
     return
   }
 
