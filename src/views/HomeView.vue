@@ -158,7 +158,7 @@ function handleDeleteCustomFood(food: FoodReference) {
 }
 
 .bottom-grid {
-  grid-template-columns: 1.15fr 1fr;
+  grid-template-columns: 1fr;
 }
 
 .auth-gate {
@@ -177,8 +177,7 @@ function handleDeleteCustomFood(food: FoodReference) {
 }
 
 @media (max-width: 1120px) {
-  .top-grid,
-  .bottom-grid {
+  .top-grid {
     grid-template-columns: 1fr;
   }
 }
