@@ -226,3 +226,94 @@ defineExpose({
     </template>
   </el-dialog>
 </template>
+
+<style scoped>
+.custom-food-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.custom-food-main,
+.custom-food-side {
+  min-width: 0;
+}
+
+.custom-food-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+  box-shadow: var(--shadow-md);
+}
+
+.dialog-section-head {
+  align-items: flex-start;
+}
+
+.dialog-section-head span {
+  text-align: left;
+}
+
+.form-grid-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.custom-food-preview :deep(.el-descriptions) {
+  margin-top: 0;
+}
+
+.custom-food-preview :deep(.el-descriptions__label) {
+  width: 120px;
+}
+
+.custom-food-preview :deep(.el-alert) {
+  margin-top: 0;
+}
+
+:deep(.custom-food-dialog .stack-form) {
+  margin-top: 8px;
+}
+
+:deep(.custom-food-dialog .el-form-item) {
+  margin-bottom: 14px;
+}
+
+:deep(.custom-food-dialog .form-grid) {
+  gap: 10px 14px;
+}
+
+:deep(.custom-food-dialog .el-dialog__body) {
+  padding-bottom: 8px;
+}
+
+:deep(.custom-food-dialog .el-textarea__inner) {
+  min-height: 72px !important;
+}
+
+@media (max-width: 1120px) {
+  .custom-food-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .form-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-food-preview {
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  :deep(.custom-food-dialog .el-form-item) {
+    margin-bottom: 12px;
+  }
+}
+</style>

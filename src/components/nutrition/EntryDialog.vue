@@ -252,3 +252,116 @@ defineExpose({
     </template>
   </el-dialog>
 </template>
+
+<style scoped>
+.dialog-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.dialog-main {
+  min-width: 0;
+}
+
+.dialog-sidebar {
+  min-width: 0;
+  width: 100%;
+}
+
+.search-results-table {
+  margin-top: 0;
+}
+
+.search-results-table :deep(.el-table__body-wrapper) {
+  overflow-y: auto;
+}
+
+.search-results-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.search-results-table :deep(.el-table__row.current-row > .el-table__cell) {
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.selection-card {
+  width: 100%;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+  box-shadow: var(--shadow-md);
+}
+
+.selection-hero h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.selection-meta {
+  margin: 12px 0 0;
+  color: var(--ink-subtle);
+  font-size: 0.94rem;
+}
+
+.selection-hero .selection-meta {
+  margin-top: 8px;
+}
+
+.selection-descriptions {
+  margin-top: 16px;
+}
+
+.dialog-form {
+  margin-top: 8px;
+}
+
+:deep(.entry-dialog .el-form-item) {
+  margin-bottom: 14px;
+}
+
+:deep(.entry-dialog .form-grid) {
+  gap: 10px 14px;
+}
+
+:deep(.entry-dialog .el-dialog__body) {
+  padding-bottom: 8px;
+}
+
+:deep(.entry-dialog .preview-descriptions) {
+  margin-top: 0;
+}
+
+:deep(.entry-dialog .preview-descriptions .el-descriptions__label) {
+  width: 96px;
+}
+
+@media (max-width: 1120px) {
+  .dialog-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-sidebar,
+  .selection-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .dialog-layout {
+    gap: 12px;
+  }
+
+  .selection-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  :deep(.entry-dialog .el-form-item) {
+    margin-bottom: 12px;
+  }
+}
+</style>

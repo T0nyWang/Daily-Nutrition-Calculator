@@ -64,3 +64,47 @@ const { bmr, profile, tdee } = storeToRefs(nutritionStore)
     </div>
   </article>
 </template>
+
+<style scoped>
+.calculation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.calculation-card {
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+  box-shadow: var(--shadow-md);
+}
+
+.calculation-card span {
+  display: block;
+  color: var(--ink-subtle);
+  font-size: 0.79rem;
+}
+
+.calculation-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.calculation-card small {
+  display: block;
+  margin-top: 0;
+  color: var(--ink-subtle);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+@media (max-width: 720px) {
+  .calculation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

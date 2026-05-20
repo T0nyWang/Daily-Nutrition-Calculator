@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useNutritionStore } from '../../stores'
 import type { FoodReference } from '../../types/nutrition'
-import { formatNumber, getFoodMeasurementUnit } from '../../utils/nutrition'
+import { formatNumber, getFoodMeasurementUnit, normalizeFoodSearch } from '../../utils/nutrition'
 
 const emit = defineEmits<{
   'create-custom-food': []
@@ -13,6 +14,23 @@ const emit = defineEmits<{
 
 const nutritionStore = useNutritionStore()
 const { customFoods } = storeToRefs(nutritionStore)
+const customFoodQuery = ref('')
+
+const filteredCustomFoods = computed(() => {
+  const query = normalizeFoodSearch(customFoodQuery.value)
+
+  if (!query) {
+    return customFoods.value
+  }
+
+  return customFoods.value.filter((food) => {
+    const searchText =
+      food.searchText ??
+      normalizeFoodSearch([food.name, food.alias, food.description, food.category].filter(Boolean).join(' '))
+
+    return searchText.includes(query)
+  })
+})
 </script>
 
 <template>
@@ -34,8 +52,21 @@ const { customFoods } = storeToRefs(nutritionStore)
       class="section-alert"
     />
 
+    <el-input
+      v-model="customFoodQuery"
+      placeholder="搜尋自訂食物名稱、分類或描述"
+      clearable
+      class="custom-food-search"
+    />
+
     <div class="table-shell">
-      <el-table :data="customFoods" empty-text="尚未建立自訂食物" class="custom-food-table" scrollbar-always-on>
+      <el-table
+        :data="filteredCustomFoods"
+        :empty-text="customFoodQuery ? '找不到符合條件的自訂食物' : '尚未建立自訂食物'"
+        class="custom-food-table"
+        scrollbar-always-on
+        :height="420"
+      >
         <el-table-column label="名稱" min-width="180">
           <template #default="{ row }">
             <div class="table-name-cell">
@@ -72,3 +103,20 @@ const { customFoods } = storeToRefs(nutritionStore)
     </div>
   </article>
 </template>
+
+<style scoped>
+.custom-food-search {
+  width: min(100%, 360px);
+  margin-top: 16px;
+}
+
+.custom-food-table {
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .custom-food-search {
+    width: 100%;
+  }
+}
+</style>

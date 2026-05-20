@@ -95,3 +95,64 @@ const calorieDifferenceTone = computed(() => {
     />
   </article>
 </template>
+
+<style scoped>
+.date-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.date-toolbar > .el-button,
+.date-toolbar > .date-picker {
+  margin: 0;
+}
+
+.date-picker {
+  min-width: 220px;
+}
+
+@media (max-width: 1120px) {
+  .date-toolbar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .date-toolbar > .date-picker,
+  .date-toolbar :deep(.el-date-editor) {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .date-toolbar > .el-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .date-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .date-picker {
+    display: block;
+    width: 100%;
+  }
+
+  .date-toolbar > .el-button,
+  .date-toolbar > .date-picker,
+  .date-toolbar :deep(.el-date-editor) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+</style>

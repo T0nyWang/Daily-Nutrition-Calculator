@@ -64,3 +64,45 @@ const { summaryRows, totals } = storeToRefs(nutritionStore)
     </div>
   </article>
 </template>
+
+<style scoped>
+.summary-topline {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.summary-chip {
+  min-width: 140px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+  box-shadow: var(--shadow-md);
+}
+
+.summary-chip span {
+  display: block;
+  color: var(--ink-subtle);
+  font-size: 0.79rem;
+}
+
+.summary-chip strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.summary-table {
+  margin-top: 16px;
+}
+
+@media (max-width: 1120px) {
+  .summary-topline {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>

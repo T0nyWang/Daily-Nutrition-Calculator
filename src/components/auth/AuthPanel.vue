@@ -156,3 +156,76 @@ async function handleSignOut() {
     </template>
   </article>
 </template>
+
+<style scoped>
+.auth-panel {
+  margin-top: 20px;
+}
+
+.auth-panel-compact {
+  padding: 18px 20px;
+}
+
+.auth-panel-compact .panel-heading {
+  align-items: center;
+}
+
+.auth-panel-compact .panel-kicker,
+.auth-panel-compact h2 {
+  display: none;
+}
+
+.auth-panel-compact .auth-signed-in {
+  margin-top: 14px;
+}
+
+.auth-form {
+  margin-bottom: 0;
+}
+
+.auth-actions {
+  margin-top: 2px;
+}
+
+.auth-signed-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+}
+
+.auth-signed-in span,
+.auth-signed-in strong {
+  display: block;
+}
+
+.auth-signed-in span {
+  color: var(--ink-subtle);
+  font-size: 0.82rem;
+}
+
+.auth-signed-in strong {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.auth-skeleton {
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .auth-signed-in {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-signed-in .el-button {
+    width: 100%;
+  }
+}
+</style>

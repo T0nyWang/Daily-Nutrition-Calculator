@@ -135,3 +135,58 @@ function handleDeleteCustomFood(food: FoodReference) {
     <DeleteConfirmDialog ref="deleteConfirmDialogRef" />
   </main>
 </template>
+
+<style scoped>
+.nutrition-app {
+  width: min(1360px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 40px;
+}
+
+.panel-grid {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.panel-grid > * {
+  min-width: 0;
+}
+
+.top-grid {
+  grid-template-columns: 1.3fr 1fr;
+}
+
+.bottom-grid {
+  grid-template-columns: 1.15fr 1fr;
+}
+
+.auth-gate {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-gate :deep(.hero-panel) {
+  grid-template-columns: 1fr;
+}
+
+.auth-gate :deep(.hero-stats) {
+  display: none;
+}
+
+@media (max-width: 1120px) {
+  .top-grid,
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .nutrition-app {
+    width: min(calc(100vw - 20px), 1360px);
+    padding-top: 20px;
+  }
+}
+</style>

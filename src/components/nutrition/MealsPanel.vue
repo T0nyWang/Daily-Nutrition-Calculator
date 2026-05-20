@@ -120,3 +120,69 @@ function getMealTableSummaryMethod(meal: MealKey): SummaryMethod<MealEntry> {
     </div>
   </section>
 </template>
+
+<style scoped>
+.meals-panel {
+  margin-top: 20px;
+}
+
+.meal-list {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.meal-card {
+  min-width: 0;
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(249, 250, 251, 0.75);
+  border: 1px solid rgba(31, 41, 55, 0.06);
+}
+
+.meal-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.meal-header h3 {
+  margin: 0;
+  font-family: "Georgia", "Times New Roman", serif;
+  letter-spacing: -0.02em;
+}
+
+.meal-header p {
+  margin: 12px 0 0;
+  color: var(--ink-subtle);
+  font-size: 0.94rem;
+}
+
+.entry-table {
+  margin-top: 16px;
+}
+
+@media (max-width: 1120px) {
+  .meal-header {
+    align-items: stretch;
+  }
+
+  .meal-header .inline-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, 440px);
+  }
+
+  .meal-header .inline-actions > .el-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .meal-header {
+    flex-direction: column;
+  }
+}
+</style>
