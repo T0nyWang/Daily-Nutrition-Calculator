@@ -1,11 +1,53 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import { useNutritionStore } from '../../stores'
+import type { SummaryRow } from '../../types/nutrition'
 import { formatNumber } from '../../utils/nutrition'
 
 const nutritionStore = useNutritionStore()
-const { summaryRows, totals } = storeToRefs(nutritionStore)
+const { summaryRows } = storeToRefs(nutritionStore)
+
+const progressRows = computed(() =>
+  summaryRows.value.map((row) => {
+    const percentage = row.target === null || row.target <= 0 ? null : Math.round((row.actual / row.target) * 100)
+
+    return {
+      ...row,
+      percentage,
+      barPercentage: percentage === null ? 0 : Math.min(100, Math.max(0, percentage)),
+    }
+  }),
+)
+
+function getProgressStatus(row: SummaryRow & { percentage: number | null }): 'success' | 'warning' | undefined {
+  if (row.percentage === null || row.percentage < 90) {
+    return undefined
+  }
+
+  if (row.percentage <= 110 || row.key === 'protein') {
+    return 'success'
+  }
+
+  return 'warning'
+}
+
+function formatProgressValue(row: SummaryRow & { percentage: number | null }) {
+  if (row.target === null || row.percentage === null) {
+    return '--'
+  }
+
+  return `${formatNumber(row.actual, row.unit === 'kcal' ? 0 : 1)} / ${formatNumber(row.target, row.unit === 'kcal' ? 0 : 1)} ${row.unit} (${formatNumber(row.percentage, 0)}%)`
+}
+
+function formatSummaryLabel(row: SummaryRow) {
+  return row.key === 'calories' ? '實際攝取' : row.label
+}
+
+function formatActualValue(row: SummaryRow) {
+  return `${formatNumber(row.actual, row.unit === 'kcal' ? 0 : 1)} ${row.unit}`
+}
 </script>
 
 <template>
@@ -18,21 +60,23 @@ const { summaryRows, totals } = storeToRefs(nutritionStore)
     </div>
 
     <div class="summary-topline">
-      <div class="summary-chip">
-        <span>實際攝取</span>
-        <strong>{{ formatNumber(totals.calories, 0) }} kcal</strong>
-      </div>
-      <div class="summary-chip">
-        <span>蛋白質</span>
-        <strong>{{ formatNumber(totals.protein) }} g</strong>
-      </div>
-      <div class="summary-chip">
-        <span>碳水</span>
-        <strong>{{ formatNumber(totals.carb) }} g</strong>
-      </div>
-      <div class="summary-chip">
-        <span>脂肪</span>
-        <strong>{{ formatNumber(totals.fat) }} g</strong>
+      <div v-for="row in progressRows" :key="row.key" class="summary-chip">
+        <div class="summary-chip-copy">
+          <span>{{ formatSummaryLabel(row) }}</span>
+          <strong>{{ formatActualValue(row) }}</strong>
+          <small>{{ formatProgressValue(row) }}</small>
+        </div>
+        <el-progress
+          type="circle"
+          :percentage="row.barPercentage"
+          :status="getProgressStatus(row)"
+          :width="72"
+          :stroke-width="8"
+        >
+          <template #default>
+            {{ row.percentage === null ? '--' : `${formatNumber(row.percentage, 0)}%` }}
+          </template>
+        </el-progress>
       </div>
     </div>
 
@@ -67,42 +111,74 @@ const { summaryRows, totals } = storeToRefs(nutritionStore)
 
 <style scoped>
 .summary-topline {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  flex-wrap: wrap;
   margin-top: 18px;
 }
 
 .summary-chip {
-  min-width: 140px;
-  padding: 16px 18px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(31, 41, 55, 0.06);
   box-shadow: var(--shadow-md);
 }
 
-.summary-chip span {
+.summary-chip-copy {
+  min-width: 0;
+}
+
+.summary-chip-copy span {
   display: block;
   color: var(--ink-subtle);
   font-size: 0.79rem;
 }
 
-.summary-chip strong {
+.summary-chip-copy strong {
   display: block;
   margin-top: 4px;
   font-size: 1.35rem;
   line-height: 1.15;
 }
 
+.summary-chip-copy small {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink-subtle);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.summary-chip :deep(.el-progress) {
+  flex: 0 0 auto;
+}
+
+.summary-chip :deep(.el-progress__text) {
+  min-width: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .summary-table {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 @media (max-width: 1120px) {
   .summary-topline {
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .summary-topline {
+    grid-template-columns: 1fr;
   }
 }
 </style>
