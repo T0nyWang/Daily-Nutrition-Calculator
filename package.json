@@ -6,7 +6,7 @@
   "scripts": {
     "prepare:data": "node scripts/generate-nutrition-data.mjs",
     "predev": "npm run prepare:data",
-    "dev": "vite",
+    "dev": "vite --open",
     "prebuild": "npm run prepare:data",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview"
@@ -23,6 +23,6 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.13",
     "vue-tsc": "^3.2.9",
-    "xlsx": "^0.18.5"
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz"
   }
 }
