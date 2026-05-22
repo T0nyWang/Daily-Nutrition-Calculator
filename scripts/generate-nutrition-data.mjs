@@ -48,7 +48,8 @@ function buildSearchText(record) {
 }
 
 async function main() {
-  const workbook = XLSX.readFile(sourcePath)
+  const sourceFile = await fs.readFile(sourcePath)
+  const workbook = XLSX.read(sourceFile, { type: 'buffer' })
   const [firstSheetName] = workbook.SheetNames
   const sheet = workbook.Sheets[firstSheetName]
   const rows = XLSX.utils.sheet_to_json(sheet, {
